@@ -30,6 +30,7 @@ def saveNotes(array_notas):
 		task_key = datastore_client.key(kind, key)
 		task = datastore.Entity(key=task_key)
 		task['placa'] = key
+		task['logradouro'] =  u'{}'.format(n['logradouro'])
 		
 		datastore_client.put(task)
 		
