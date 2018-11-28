@@ -1,39 +1,25 @@
-import tornado.ioloop
-import tornado.web
-import requests
+from flask import Flask
+from flask import request
+from google.cloud import datastore
+import base64
+import json
 
-datastoreURL = "https://get-week-results.appspot.com/"
+app = Flask(__name__)
 
-class SaveCache(tornado.web.RequestHandler):
-    def get(self):
-        turma = self.get_argument('turma', '')
+@app.route('/')
+def home():
+	return 'Relatório service'
 
-        saveCache()
+@app.route('/salvar', methods=['POST'])
+def publish():
+	payload = request.get_json()
+	message_body = base64.b64decode(str(payload['message']['data'])).decode('utf-8').replace("'", '"')
+	array_notas = json.loads(message_body)
+	saveNotes(array_notas)
+	return 'OK', 200
 
-class GetWeekResults(tornado.web.RequestHandler):
-    def get(self):
-        turma = self.get_argument('turma', '')
+def saveNotes(array_notas):
+	print('NOTAS ', array_notas)
 
-        generateWeekResults(turma)
-
-def generateWeekResults(turma):
-    global datastoreURL
-    r = requests.get(datastoreURL)
-
-    print(r.status_code)
-    print(r.headers)
-    print(r.content)
-
-def saveCache():
-    print('Turma salva no cache.')
-
-def make_app():
-    return tornado.web.Application([
-        (r"/save-cache", SaveCache),
-        (r"/get-week-results", GetWeekResults)
-    ])
-
-if __name__ == "__main__":
-    app = make_app()
-    app.listen(8080)
-    tornado.ioloop.IOLoop.current().start()
+if __name__ == '__main__':
+    app.run(host='127.0.0.1', port=8080, debug=True)

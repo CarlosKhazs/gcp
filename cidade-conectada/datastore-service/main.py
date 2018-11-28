@@ -1,43 +1,39 @@
-import tornado.ioloop
-import tornado.web
+from flask import Flask
+from flask import request
 from google.cloud import datastore
+import base64
+import json
 
-project_id = "cidade-conectada"
+app = Flask(__name__)
 
-class MainHandler(tornado.web.RequestHandler):
-    def post(self):
-        carro = self.get_argument('carro', '')
+@app.route('/')
+def home():
+	return 'Datastore service'
 
-        saveCar(carro)
+@app.route('/salvar', methods=['POST'])
+def publish():
+	payload = request.get_json()
+	message_body = base64.b64decode(str(payload['message']['data'])).decode('utf-8').replace("'", '"')
+	array_notas = json.loads(message_body)
+	saveNotes(array_notas)
+	return 'OK', 200
 
-class GetWeekResults(tornado.web.RequestHandler):
-    def get(self):
-        getWeekResults()
+def saveNotes(array_notas):
+	print('NOTAS ', array_notas)
+	
+	datastore_client = datastore.Client()
+	
+	kind = 'Carros'
 
-def getWeekResults():
-    print('Relatório gerado.')
+	for n in array_notas:
+		key = u'{}'.format(n['placa'])
+		task_key = datastore_client.key(kind, key)
+		task = datastore.Entity(key=task_key)
+		task['placa'] = key
+		
+		datastore_client.put(task)
+		
+		print('Saved {}: {}'.format(task.key.name, task['placa']))
 
-def saveCar(carro):
-    global project_id
-
-    datastore_client = datastore.Client(project_id)
-
-    kind = 'Placas'
-    name = 'placa'
-    task_key = datastore_client.key(kind, name)
-
-    task['placa'] = u'{}'.format(carro.get(placa, '123456789'))
-
-    datastore_client.put(task)
-
-    print('Saved {}: {}'.format(task.key.name, task['placa']))
-
-def make_app():
-    return tornado.web.Application([
-        (r"/", MainHandler),
-    ])
-
-if __name__ == "__main__":
-    app = make_app()
-    app.listen(8080)
-    tornado.ioloop.IOLoop.current().start()
+if __name__ == '__main__':
+    app.run(host='127.0.0.1', port=8080, debug=True)
