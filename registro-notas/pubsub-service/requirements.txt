@@ -1,2 +1,2 @@
-google-cloud-pubsub
-tornado
+google-cloud-pubsub==0.38.0
+Flask==1.0.2

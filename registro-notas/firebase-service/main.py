@@ -1,34 +1,43 @@
+from flask import Flask
+from flask import request
 from firebase_admin import db
+import base64
+import json
 
-project_id = "registro-nota"
 ref = db.reference('notas')
+        
+app = Flask(__name__)
 
-class MainHandler(tornado.web.RequestHandler):
-    def post(self):
-        turma = self.get_argument('turma', '')
+@app.route('/')
+def home():    
+	return 'Firebase service', 200
 
-        saveNotes(turma)
+@app.route('/salvar', methods=['POST'])
+def publish():
+	payload = request.get_json()
+	message_body = base64.b64decode(str(payload['message']['data'])).decode('utf-8').replace("'", '"')
+	array_notas = json.loads(message_body)
+	saveNotes(array_notas)
+	return 'OK', 200
 
-def saveNotes(turma):
-    global project_id
+def saveNotes(array_notas):
+	print('NOTAS ', array_notas)
+	
+	datastore_client = datastore.Client()
+	
+	kind = 'Notas'
 
-    for n in turma:
-        users_ref = ref.child(turma)
-        users_ref.set({
-            n.matricula: {
-                'nome': n.nome,
-                'nota': n.nota
-            }
-        })
+	for n in array_notas:
+		key = u'{}'.format(n['matricula'])
+		users_ref = ref.child(key)
+	    users_ref.set({
+			'matricula': key,
+			'nome': n['nome'],
+			'nota': n['nota']
+		})
+		
+		print('Saved {}: '.format(key))
 
-        print('Saved {}: {}'.format(n['nome']))
+if __name__ == '__main__':
+    app.run(host='127.0.0.1', port=8080, debug=True)
 
-def make_app():
-    return tornado.web.Application([
-        (r"/", MainHandler),
-    ])
-
-if __name__ == "__main__":
-    app = make_app()
-    app.listen(8080)
-    tornado.ioloop.IOLoop.current().start()

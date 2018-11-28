@@ -1,27 +1,24 @@
-import tornado.ioloop
-import tornado.web
-import requests
+from flask import Flask
+from flask import request
+import base64
+import json
 
-functionURL = "https://send-email.appspot.com/"
+app = Flask(__name__)
 
-class MainHandler(tornado.web.RequestHandler):
-    def get(self):
-        calculateNotes()
+@app.route('/')
+def home():    
+	return 'Calcular nota service', 200
 
-def calculateNotes():
-    global functionURL
-    r = requests.get(functionURL)
+@app.route('/calcular', methods=['POST'])
+def publish():
+	payload = request.get_json()
+	message_body = base64.b64decode(str(payload['message']['data'])).decode('utf-8').replace("'", '"')
+	array_notas = json.loads(message_body)
+	
+	print('Email enviado: TESTE!! TESTE!!', array_notas)
+	
+	return 'ok', 200
 
-    print(r.status_code)
-    print(r.headers)
-    print(r.content)
+if __name__ == '__main__':
+    app.run(host='127.0.0.1', port=8080, debug=True)
 
-def make_app():
-    return tornado.web.Application([
-        (r"/", MainHandler),
-    ])
-
-if __name__ == "__main__":
-    app = make_app()
-    app.listen(8080)
-    tornado.ioloop.IOLoop.current().start()

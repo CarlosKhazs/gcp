@@ -1,41 +1,41 @@
-import tornado.ioloop
-import tornado.web
-from google.cloud import pubsub
+from flask import Flask
+from flask import request
 from google.cloud import datastore
+import base64
+import json
 
-project_id = "registro-nota"
+app = Flask(__name__)
 
-class MainHandler(tornado.web.RequestHandler):
-    def post(self):
-        turma = self.get_argument('turma', '')
+@app.route('/')
+def home():
+	return 'Datastore service'
 
-        saveNotes(turma)
+@app.route('/salvar', methods=['POST'])
+def publish():
+	payload = request.get_json()
+	message_body = base64.b64decode(str(payload['message']['data'])).decode('utf-8').replace("'", '"')
+	array_notas = json.loads(message_body)
+	saveNotes(array_notas)
+	return 'OK', 200
 
-def saveNotes(turma):
-    global project_id
+def saveNotes(array_notas):
+	print('NOTAS ', array_notas)
+	
+	datastore_client = datastore.Client()
+	
+	kind = 'Notas'
 
-    datastore_client = datastore.Client(project_id)
+	for n in array_notas:
+		key = u'{}'.format(n['matricula'])
+		task_key = datastore_client.key(kind, key)
+		task = datastore.Entity(key=task_key)
+		task['matricula'] = key
+		task['nome'] = u'{}'.format(n['nome'])
+		task['nota'] = n['nota']
+		
+		datastore_client.put(task)
+		
+		print('Saved {}: {}'.format(task.key.name, task['nome']))
 
-    kind = 'Notas'
-    name = 'nota'
-    task_key = datastore_client.key(kind, name)
-
-    for n in turma:
-        task = datastore.Entity(key=task_key)
-        task['matricula'] = u'{}'.format(n.get(matricula, '123456789'))
-        task['nome'] = u'{}'.format(n.get(nome, 'WyllerXD'))
-        task['nota'] = n.get(nota, 0)
-
-        datastore_client.put(task)
-
-        print('Saved {}: {}'.format(task.key.name, task['nome']))
-
-def make_app():
-    return tornado.web.Application([
-        (r"/", MainHandler),
-    ])
-
-if __name__ == "__main__":
-    app = make_app()
-    app.listen(8080)
-    tornado.ioloop.IOLoop.current().start()
+if __name__ == '__main__':
+    app.run(host='127.0.0.1', port=8080, debug=True)
